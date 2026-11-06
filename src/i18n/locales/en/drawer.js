@@ -1,5 +1,10 @@
 // The session drawer (ui/session-drawer.js): the conversation, steps, subagents and the session's actions.
 export default {
+  rename: 'Rename character',
+  renamePlaceholder: 'Enter character name…',
+  renameHint: 'Enter to save, Esc to cancel',
+  renameFailed: "Couldn't rename character.",
+  renameReset: 'Reset to default name',
   tokens: '{used} / {max} tokens · {model}',
   // the prompt cache's clock (src/shared/cache-clock.js), under the session's folder
   cache: { warm: { one: 'Prompt cache still warm for ~{n} minute', other: 'Prompt cache still warm for ~{n} minutes' }, cold: 'Prompt cache gone cold: the next message re-reads ~{tokens} tokens', coldNoSize: 'Prompt cache gone cold', guessed: '(estimated)', title: 'While the cache is warm, writing to this session again is cheap. Once cold, the next message reads the whole conversation again.' },

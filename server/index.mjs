@@ -322,7 +322,7 @@ setInterval(() => { if (watching()) git.pollCi(); }, 120_000).unref();
 function rollDay() { if (stats.day !== today()) stats = { day: today(), read: 0, edit: 0, cmd: 0, web: 0, prompts: 0, deploy: 0, commit: 0 }; }
 
 function newSession(key) {
-  return { id: crypto.randomUUID(), key, sid: null, pid: null, name: '', cwd: '', link: null, desk: freeDesk(), status: 'rest', busy: false,
+  return { id: crypto.randomUUID(), key, sid: null, pid: null, name: '', customName: '', cwd: '', link: null, desk: freeDesk(), status: 'rest', busy: false,
     lastPrompt: '', taskStart: 0, counts: { read: 0, edit: 0, cmd: 0, web: 0 }, subs: {}, last: null, fromFile: false, lastEventAt: 0, createdAt: Date.now() };
 }
 function freeDesk() {
@@ -330,8 +330,16 @@ function freeDesk() {
   for (let i = 0; i < DESKS; i++) if (!used.has(i)) return i;
   return -1;
 }
+function applyCharacterName(s) {
+  const map = prefs.get('characterNames') || {};
+  const cname = (s.sid && map[s.sid]) || (s.name && map[s.name]) || (s.id && map[s.id]) || '';
+  if (cname) {
+    s.customName = cname;
+    s.title = cname;
+  }
+}
 const pubSub = (x) => ({ id: x.id, type: x.type, desc: x.desc || '', last: x.last || null, startedAt: x.startedAt, endedAt: x.endedAt || null, steps: x.steps || 0, model: x.model || '' });
-const pub = (s) => ({ id: s.id, pid: s.pid, name: s.name, title: s.title || '', dir: tilde(s.cwd), link: s.link, desk: s.desk, status: s.status, lastPrompt: s.lastPrompt && oneLine(unwrapPaste(s.lastPrompt)),
+const pub = (s) => ({ id: s.id, pid: s.pid, name: s.name, title: s.title || '', customName: s.customName || '', dir: tilde(s.cwd), link: s.link, desk: s.desk, status: s.status, lastPrompt: s.lastPrompt && oneLine(unwrapPaste(s.lastPrompt)),
   taskStart: s.taskStart, counts: s.counts, subs: Object.values(s.subs).map(pubSub), doneSubs: (s.doneSubs || []).map(pubSub), last: s.last, acct: acctOf(s),
   entry: s.entry || '', moved: s.parked ? { to: acctShown(s.parked.to), at: s.parked.at } : null,
   lastAt: s.lastEventAt || s.createdAt, doneAt: s.doneAt || 0, todos: s.todos || [], lastReply: s.lastReply || '', origin: s.origin || '',
@@ -901,6 +909,7 @@ async function doScan() {
     const link = j.bridgeSessionId ? 'https://claude.ai/code/' + j.bridgeSessionId : null;
     const name = j.name || base(j.cwd) || 'claude';
     if (s.name !== name || s.cwd !== j.cwd || s.link !== link) { s.name = name; s.cwd = j.cwd || ''; s.link = link; changed = true; noteDir(s.cwd); }
+    applyCharacterName(s);
     s.pid = j.pid; s.fromFile = true; s.busy = j.status === 'busy'; s.entry = j.entrypoint || '';
     s.jobId = j.kind === 'bg' && /^[0-9a-f]{6,16}$/.test(j.jobId || '') ? j.jobId : null;   // (a background session: `claude stop` / `attach` take this)
     s.inbox = typeof j.messagingSocketPath === 'string' && j.messagingSocketPath ? j.messagingSocketPath : null;   // (where a note reaches it while it works: server/steer.mjs)
@@ -920,6 +929,8 @@ async function doScan() {
 const transcriptOf = (s) => s.transcript || (s.sid && s.cwd ? path.join(CLAUDE_DIR, 'projects', s.cwd.replace(/[^A-Za-z0-9-]/g, '-'), `${s.sid}.jsonl`) : null);
 const lastField = (text, field) => { let m, out = null; const re = new RegExp(`"${field}":"((?:[^"\\\\]|\\\\.)*)"`, 'g'); while ((m = re.exec(text))) out = m[1]; if (out == null) return null; try { return JSON.parse(`"${out}"`); } catch { return null; } };
 async function refreshTitle(s, first = false) {
+  applyCharacterName(s);
+  if (s.customName) return;
   const file = transcriptOf(s); if (!file) return;
   s.titleAt = Date.now();
   let fh;
@@ -3019,6 +3030,35 @@ const server = http.createServer((req, res) => {
     readJson(req).then((b) => {
       if (!mac && !prefs.get('phoneTasks')) { json(res, 403, { ok: false, code: 'notAllowed', message: tr('chat.task.notAllowed') }); return; }
       json(res, 200, pinOp(b || {}, [...sessions.values()].find((x) => x.id === String(b?.id || ''))));
+    });
+    return;
+  }
+  if (req.method === 'POST' && url.pathname === '/api/sessions/rename') {
+    if (!authorized(req, url) || !sameOriginOf(req) || !String(req.headers['content-type'] || '').startsWith('application/json')) { json(res, 403, { ok: false }); return; }
+    readJson(req).then((b) => {
+      const s = [...sessions.values()].find((x) => x.id === String(b?.id || '') || (b?.sid && x.sid === String(b.sid)));
+      if (!s) { json(res, 404, { ok: false, message: tr('server.move.notOpen') }); return; }
+      const raw = String(b?.name ?? '').trim();
+      const name = clip(oneLine(raw), 40);
+      const names = { ...(prefs.get('characterNames') || {}) };
+      const key = s.sid || s.name || s.id;
+      if (name) {
+        names[key] = name;
+        s.customName = name;
+        s.title = name;
+      } else {
+        delete names[key];
+        if (s.sid) delete names[s.sid];
+        if (s.name) delete names[s.name];
+        if (s.id) delete names[s.id];
+        s.customName = '';
+        s.title = s.customTitle || s.aiTitle || '';
+        refreshTitle(s, true);
+      }
+      prefs.set('characterNames', Object.keys(names).length ? names : undefined);
+      fsp.appendFile(ACTION_LOG, `${new Date().toISOString()} rename character ${s.name} -> ${name || '(default)'}\n`).catch(() => {});
+      broadcast({ k: 'sess', s: pub(s) });
+      json(res, 200, { ok: true, name: s.title || s.name, customName: s.customName || '' });
     });
     return;
   }

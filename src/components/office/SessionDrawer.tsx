@@ -8,7 +8,14 @@ export default async function SessionDrawer() {
     <aside className="drawer" id="dr-session" hidden aria-label={t('ui.sessionDrawer.label')}>
       <header className="dr-head">
         <span className="dr-dot" id="ds-dot"></span>
-        <div className="dr-title"><h2 id="ds-name"></h2><p id="ds-dir"></p><p className="ds-cache" id="ds-cache" title={t('drawer.cache.title')} hidden></p></div>
+        <div className="dr-title">
+          <div className="ds-name-wrap" id="ds-name-wrap">
+            <h2 id="ds-name" title={t('drawer.rename')}></h2>
+            <button type="button" className="ds-rename-btn" id="ds-rename-btn" title={t('drawer.rename')} aria-label={t('drawer.rename')}><span data-icon="pencil"></span></button>
+          </div>
+          <p id="ds-dir"></p>
+          <p className="ds-cache" id="ds-cache" title={t('drawer.cache.title')} hidden></p>
+        </div>
         <span className="pill" id="ds-status"></span>
         <button className="icon-btn" type="button" data-close aria-label={t('common.close')}><span data-icon="x"></span></button>
       </header>

@@ -72,6 +72,26 @@
 .st-loop-row .seg button:disabled { opacity: .45; cursor: default; }
 .st-loop-install { color: var(--amber); }
 
+/* character rename list in Settings → Characters */
+.st-char-h { margin-top: 18px; }
+.st-char-list { display: grid; gap: 6px; margin-top: 4px; }
+.st-char-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.st-char-info { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.st-char-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.st-char-meta { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.st-char-meta b { font-size: .84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-char-meta small { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
+.st-char-btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: var(--card-2); border: 1px solid var(--line); font-size: .72rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.st-char-btn:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+.st-char-btn svg { width: 12px; height: 12px; }
+.st-char-form { display: flex; align-items: center; gap: 6px; width: 100%; }
+.st-char-input { box-sizing: border-box; flex: 1; height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent-line); background: #0B1018; color: var(--ink); font: inherit; font-size: .82rem; font-weight: 600; outline: none; }
+.st-char-input:focus { box-shadow: 0 0 0 2px var(--accent-soft); }
+.st-char-save, .st-char-cancel { all: unset; cursor: pointer; padding: 0 8px; height: 28px; line-height: 28px; border-radius: 6px; font-size: .72rem; font-weight: 600; }
+.st-char-save { background: var(--accent); color: var(--on-accent); }
+.st-char-cancel { background: var(--card-2); color: var(--muted); }
+.st-char-cancel:hover { color: var(--ink); }
+
 @media (max-width: 720px) {
   .pop-settings { top: 58px; left: 10px; right: 10px; width: auto; }
   .st-cards--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

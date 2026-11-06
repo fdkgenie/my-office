@@ -41,11 +41,99 @@ export function openSession(id, opts = {}) {
   loadLog(true);
   queueUi();
 }
-export function closeSession() { state.selectedId = null; state.subView = null; drS.hidden = true; goView('home'); queueUi(); }
+export function closeSession() {
+  editingId = null;
+  const wrap = $('ds-name-wrap');
+  if (wrap) wrap.hidden = false;
+  $('dr-session')?.querySelector('.ds-rename-form')?.remove();
+  state.selectedId = null; state.subView = null; drS.hidden = true; goView('home'); queueUi();
+}
+
+let editingId = null;
+
+export async function renameSession(s, newName) {
+  const v = short(String(newName || '').trim(), 40);
+  const wasCustom = s.customName || '';
+  const wasTitle = s.title || '';
+  s.customName = v;
+  s.title = v || s.customTitle || s.aiTitle || '';
+  const w = workers.get(s.id);
+  if (w) w.setName(short(dn(s), 26));
+  renderSessionHead();
+  queueUi();
+  if (DEMO) return true;
+  try {
+    const r = await fetch(`/api/sessions/rename${TOKEN ? `?k=${encodeURIComponent(TOKEN)}` : ''}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: s.id, name: v }),
+    }).then((x) => x.json());
+    if (!r?.ok) throw new Error(r?.message || 'failed');
+    return true;
+  } catch {
+    s.customName = wasCustom;
+    s.title = wasTitle;
+    if (w) w.setName(short(dn(s), 26));
+    renderSessionHead();
+    queueUi();
+    toast(tr('drawer.renameFailed'));
+    return false;
+  }
+}
+
+function startRename(s) {
+  if (!s || editingId === s.id) return;
+  const wrap = $('ds-name-wrap');
+  if (!wrap) return;
+  editingId = s.id;
+  const current = s.customName || dn(s);
+  const form = el('form', 'ds-rename-form');
+  const inp = el('input', 'ds-rename-input');
+  inp.type = 'text';
+  inp.maxLength = 40;
+  inp.value = current;
+  inp.placeholder = s.name || current;
+  inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', tr('drawer.rename'));
+  const hint = el('small', 'ds-rename-hint', tr('drawer.renameHint'));
+  form.append(inp, hint);
+
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    editingId = null;
+    form.remove();
+    wrap.hidden = false;
+    if (save) {
+      const v = inp.value.trim();
+      if (v !== current) renameSession(s, v);
+    }
+    renderSessionHead();
+  };
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); finish(true); });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  inp.addEventListener('blur', () => finish(true));
+
+  wrap.hidden = true;
+  wrap.after(form);
+  inp.focus();
+  inp.select();
+}
+
 export function renderSessionHead() {
   const s = sessions.get(state.selectedId); if (!s) return;
   $('ds-dot').style.background = colorOf(s);
-  $('ds-name').textContent = dn(s);
+  if (editingId !== s.id) {
+    const wrap = $('ds-name-wrap');
+    if (wrap) wrap.hidden = false;
+    $('dr-session')?.querySelector('.ds-rename-form')?.remove();
+    const nameEl = $('ds-name');
+    if (nameEl) nameEl.textContent = dn(s);
+  }
   $('ds-dir').textContent = s.origin ? `${s.dir} · ${s.origin}` : s.dir;
   drawDrawerCache();   // (its prompt cache: warm for how long, or cold)
   const st = $('ds-status'); st.textContent = STATUS_LABEL[s.status]; st.dataset.status = s.status;
@@ -387,6 +475,12 @@ export function setup() {
   $('tab-subs').addEventListener('click', () => { state.subView = null; setTab('subs'); });
   $('tab-act').addEventListener('click', () => setTab('act'));
   $('tab-pins').addEventListener('click', () => setTab('pins'));
+  const onRename = () => {
+    const s = sessions.get(state.selectedId);
+    if (s) startRename(s);
+  };
+  $('ds-name')?.addEventListener('click', onRename);
+  $('ds-rename-btn')?.addEventListener('click', onRename);
   // "Latest" button: shows when you have scrolled up in a conversation.
   jumpBtn = el('button', 'chat-jump');
    jumpBtn.type = 'button';

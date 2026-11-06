@@ -85,6 +85,11 @@ export default async function SettingsPanel() {
             ))}
           </div>
           <p className="pop-note">{t('settings.lookNote')}</p>
+
+          <h3 className="st-char-h">{t('settings.charactersList')}</h3>
+          <p className="pop-note">{t('settings.characterRenameHint')}</p>
+          <div className="st-char-list" id="st-char-list"></div>
+          <p className="pop-note" id="st-char-empty" hidden>{t('settings.noCharacters')}</p>
         </section>
 
         <section className="st-panel" id="st-panel-display" role="tabpanel" aria-labelledby="st-tab-display" data-st-panel="display" hidden>

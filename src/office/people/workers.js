@@ -198,7 +198,7 @@ export function setup() {
       const bw = el('div', 'bubble-wrap'); this.bubbleEl = el('div', 'bubble'); bw.append(this.bubbleEl);
       this.bubbleObj = new CSS2DObject(bw); this.bubbleObj.position.set(0, 2.0, 0); this.bubbleObj.visible = false; root.add(this.bubbleObj);
     }
-    setName(n) { if (this.tagText.data !== n) this.tagText.data = n; }
+    setName(n) { this.cfg.name = n; if (this.tagText.data !== n) this.tagText.data = n; }
     // the height they stand at: the office floor, or down on the street (the pavement, or the road on a crossing)
     gy() { return this.street ? this.ground : 0; }
     // which account the session runs under, when this Mac has more than one (a second login's folder name)

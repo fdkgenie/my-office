@@ -6,6 +6,18 @@
 .dr-head { display: flex; align-items: center; gap: 12px; padding: 16px 12px 14px 18px; border-bottom: 1px solid var(--line); }
 .dr-title { min-width: 0; flex: 1; }
 .dr-title h2 { font-size: 1.15rem; font-weight: 700; margin: 0; line-height: 1.2; overflow-wrap: anywhere; }
+.ds-name-wrap { display: flex; align-items: center; gap: 6px; }
+.ds-name-wrap h2 { cursor: pointer; border-radius: 4px; padding: 1px 4px; margin-left: -4px; transition: background .15s; }
+.ds-name-wrap h2:hover { background: rgba(255, 255, 255, .06); }
+.ds-rename-btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: var(--faint); opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.ds-rename-btn svg { width: 13px; height: 13px; }
+.ds-rename-btn:hover { background: rgba(255, 255, 255, .08); color: var(--ink); }
+.ds-name-wrap:hover .ds-rename-btn, .ds-rename-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .ds-rename-btn { opacity: 1; } }
+.ds-rename-form { display: grid; gap: 3px; margin: 1px 0; }
+.ds-rename-input { box-sizing: border-box; width: 100%; max-width: 240px; height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent-line, #3F7CC4); background: #0B1018; color: var(--ink); font: inherit; font-size: .95rem; font-weight: 700; outline: none; }
+.ds-rename-input:focus { box-shadow: 0 0 0 3px rgba(63, 124, 196, .25); }
+.ds-rename-hint { font-size: .65rem; color: var(--faint); }
 .dr-title p { margin: 3px 0 0; font: 500 .72rem/1.3 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .dr-title .ds-cache { font-family: var(--font); color: #F2B544; cursor: help; }   /* the prompt cache's clock (ui/cache-words.js) */
 .dr-title .ds-cache::before { content: "☕ "; }

@@ -1,13 +1,13 @@
 // Settings popover: backdrop, floor plan, look, time, toggles.
 import { state } from '../core/state.js';
 import { needWorld } from '../core/world-boot.js';
-import { $, LAYOUT, PLANS, STATIC } from '../core/env.js';
+import { $, el, LAYOUT, PLANS, STATIC } from '../core/env.js';
 import { bubbleText } from './event-text.js';
 import { labels } from '../scene/renderer.js';
-import { subs, workers } from '../people/workers.js';
+import { colorOf, dn, sessions, subs, workers } from '../people/workers.js';
 import { isNightHour, night, setNight } from '../world/room-update.js';
 import { queueUi, renderFeed, toast } from './activity.js';
-import { renderChat, renderSessionHead, tab } from './session-drawer.js';
+import { renameSession, renderChat, renderSessionHead, tab } from './session-drawer.js';
 import { renderLimits } from './mac-drawer.js';
 import { renderAi } from './ai-accounts.js';
 import { stickyNotes } from './whiteboard.js';
@@ -18,6 +18,7 @@ import { setScene } from '../world/backdrops/index.js';
 import { TOKEN } from '../net/live.js';
 import { onQualityChange, quality, setQuality } from '../scene/quality.js';
 import { drawPortraits } from './portraits.js';
+import { icon } from './icons.js';
 import { DEFAULT_LANG, t as tr, lang } from '../../i18n/index.js';
 
 export let popLook;
@@ -45,13 +46,79 @@ function setLang(l) {
 // the four tabs of Settings; the last one opened comes back next time
 const TABS = ['office', 'people', 'display', 'more'];
 let tabNow = 'office';
+export function renderCharactersList() {
+  const host = $('st-char-list'), empty = $('st-char-empty');
+  if (!host) return;
+  const list = [...sessions.values()];
+  if (empty) empty.hidden = list.length > 0;
+  if (!list.length) { host.replaceChildren(); return; }
+
+  host.replaceChildren();
+  for (const s of list) {
+    const row = el('div', 'st-char-row');
+    const info = el('div', 'st-char-info');
+    const dot = el('span', 'st-char-dot');
+    dot.style.background = colorOf(s);
+    const meta = el('div', 'st-char-meta');
+    const nameEl = el('b', null, dn(s));
+    const subEl = el('small', null, s.dir ? `${s.name} · ${s.dir}` : s.name);
+    meta.append(nameEl, subEl);
+    info.append(dot, meta);
+
+    const btn = el('button', 'st-char-btn', tr('settings.characterRename'));
+    btn.type = 'button';
+    btn.append(icon('pencil'));
+
+    const edit = () => {
+      const form = el('form', 'st-char-form');
+      const inp = el('input', 'st-char-input');
+      inp.type = 'text';
+      inp.maxLength = 40;
+      const current = s.customName || dn(s);
+      inp.value = current;
+      inp.placeholder = s.name || current;
+      inp.autocomplete = 'off';
+      inp.setAttribute('aria-label', tr('drawer.rename'));
+      const saveBtn = el('button', 'st-char-save', tr('common.save'));
+      saveBtn.type = 'submit';
+      const cancelBtn = el('button', 'st-char-cancel', tr('common.cancel'));
+      cancelBtn.type = 'button';
+
+      let done = false;
+      const finish = (save) => {
+        if (done) return;
+        done = true;
+        if (save) {
+          const v = inp.value.trim();
+          if (v !== current) renameSession(s, v);
+        }
+        renderCharactersList();
+      };
+      form.addEventListener('submit', (e) => { e.preventDefault(); finish(true); });
+      cancelBtn.addEventListener('click', () => finish(false));
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+      });
+      form.append(inp, saveBtn, cancelBtn);
+      row.replaceChildren(form);
+      inp.focus();
+      inp.select();
+    };
+
+    btn.addEventListener('click', edit);
+    meta.addEventListener('click', edit);
+    meta.style.cursor = 'pointer';
+    row.append(info, btn);
+    host.append(row);
+  }
+}
 function showTab(k, focus = false) {
   if (!TABS.includes(k)) k = 'office';
   tabNow = k;
   for (const b of popLook.querySelectorAll('[data-st-tab]')) { const on = b.dataset.stTab === k; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus(); }
   for (const p of popLook.querySelectorAll('[data-st-panel]')) p.hidden = p.dataset.stPanel !== k;
   try { localStorage.setItem('office-settings-tab', k); } catch { /* storage blocked */ }
-  if (k === 'people') requestAnimationFrame(drawPortraits);   // drawn once, the first time
+  if (k === 'people') { requestAnimationFrame(drawPortraits); renderCharactersList(); }
 }
 export function togglePop(open = popLook.hidden) { popLook.hidden = !open; btnLook.setAttribute('aria-expanded', String(open)); if (open) { togglePlan(false); showTab(tabNow); } }
 let popPlan;
