@@ -46,6 +46,8 @@ function quotas() {
   if (cw) out.push({ name: 'Codex', pct: cw.pct, detail: () => ({ groups: [{ rows: liveWindows(ca.windows) }] }) });
   const ag = S.ai?.ag, aa = ag?.list?.find((a) => a.id === ag.now), r = aa?.rows?.[0];
   if (r) out.push({ name: r.label.split(' ')[0] || 'Antigravity', pct: r.pct, detail: () => ({ groups: [{ rows: aa.rows }] }) });
+  const omp = S.ai?.omp, oa = omp?.list?.find((a) => a.id === omp.now), ow = tight(oa?.windows);
+  if (ow) out.push({ name: 'Oh My Pi', pct: ow.pct, detail: () => ({ groups: [{ rows: liveWindows(oa.windows) }] }) });
   return out;
 }
 

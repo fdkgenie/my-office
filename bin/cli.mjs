@@ -74,6 +74,29 @@ function ensureBuild() {
   execFileSync(process.execPath, [path.join(ROOT, 'node_modules', 'next', 'dist', 'bin', 'next'), 'build'], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } });
 }
 
+async function installOmpExtension() {
+  const ompHome = process.env.PI_CODING_AGENT_DIR || process.env.OMP_HOME || path.join(HOME, '.omp', 'agent');
+  const extDir = path.join(ompHome, 'extensions');
+  const src = path.join(ROOT, 'hooks', 'omp-extension.ts');
+  if (!fs.existsSync(ompHome) || !fs.existsSync(src)) return false;
+  try {
+    await fsp.mkdir(extDir, { recursive: true });
+    await fsp.copyFile(src, path.join(extDir, 'my-office.ts'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function uninstallOmpExtension() {
+  const ompHome = process.env.PI_CODING_AGENT_DIR || process.env.OMP_HOME || path.join(HOME, '.omp', 'agent');
+  const ext = path.join(ompHome, 'extensions', 'my-office.ts');
+  if (fs.existsSync(ext)) {
+    try { await fsp.unlink(ext); return true; } catch { return false; }
+  }
+  return false;
+}
+
 async function install() {
   console.log(tr('cli.install.title'));
   const cfg = await readSettings(); cfg.hooks ||= {};
@@ -111,6 +134,7 @@ async function install() {
   }
   if (!args.includes('--no-panel') && !opt('--settings')) await panel();
   if (!args.includes('--no-menubar') && !opt('--settings') && process.platform === 'darwin') menubar();
+  if (!opt('--settings') && (await installOmpExtension())) ok(tr('cli.install.omp', { file: '~/.omp/agent/extensions/my-office.ts' }));
   console.log(`\n${tr('cli.install.next', { port: PORT })}`);
 }
 /* The Mac's menu bar icon (menubar/MyOfficeBar.swift): built here with the Swift compiler of Xcode's command line tools
@@ -183,6 +207,7 @@ async function uninstall() {
   // The login service is machine-wide: only touch it when working on the real settings (not a --settings copy).
   if (!opt('--settings') && (await service().uninstall())) ok(tr('cli.uninstall.service'));
   if (!opt('--settings') && unwrapEditors()) ok(tr('cli.uninstall.editors'));
+  if (!opt('--settings') && (await uninstallOmpExtension())) ok(tr('cli.uninstall.omp'));
   if (!opt('--settings')) for (const e of await uninstallPanel()) if (e.ok) ok(tr('cli.uninstall.panel', { app: e.app }));
   if (!opt('--settings') && fs.existsSync(MENUBAR_APP)) {
     try { execFileSync('pkill', ['-f', MENUBAR_BIN], { stdio: 'ignore' }); } catch { /* not running */ }

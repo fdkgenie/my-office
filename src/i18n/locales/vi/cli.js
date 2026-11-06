@@ -20,8 +20,10 @@ export default {
     next: 'Mở http://localhost:{port} rồi gõ một câu trong Claude Code để thấy nhân vật đi vào.',
     otel: 'Từ giờ Claude Code tự gửi số liệu dùng về văn phòng (chỉ trong máy này, không gửi nội dung prompt): mở phiên mới là xem được cái gì đang ăn gói. Đã thêm vào {file}',
     otelTheirs: 'Bạn đã gửi telemetry của Claude Code đi chỗ khác ({where}) nên văn phòng không đụng vào. Muốn xem thêm "Cái gì đang ăn gói", hãy thêm văn phòng làm exporter thứ hai trong OpenTelemetry Collector của bạn:',
+    omp: 'Tiện ích mở rộng Oh My Pi: {file}',
   },
   uninstall: {
+    omp: 'Đã gỡ tiện ích mở rộng Oh My Pi.',
     menubar: 'Đã gỡ biểu tượng thanh menu.',
     panel: 'Đã gỡ bảng My Office khỏi {app}.',
     editors: 'Đã bỏ cổng đổi tài khoản của văn phòng khỏi cài đặt trình soạn thảo',

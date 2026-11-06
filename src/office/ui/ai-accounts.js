@@ -206,7 +206,60 @@ function agAdd(g) {
   return card;
 }
 
-/* ---------- the tabs: Claude, Codex, Antigravity ----------
+/* ---------- Oh My Pi (omp.sh) ---------- */
+function ompSection(o) {
+  const cur = o.list.find((a) => a.id === o.now);
+  const s = section('Oh My Pi', [tr('ai.count', { n: o.list.length }), (cur?.model || o.model) && tr('ai.omp.model', { model: cur?.model || o.model })].filter(Boolean).join(' · '));
+  s.dataset.tool = 'omp';
+  if (!o.cli) s.append(el('small', 'acct-warn', tr('ai.omp.noCli')));
+  if (o.seat === 'apiKey') s.append(el('small', 'acct-warn', tr('ai.omp.apiKey')));
+  const names = new Map(o.list.map((a) => [a.id, nameOf(a)]));
+  for (const where of [...new Set((o.older || []).filter((p) => p.where !== 'terminal').map((p) => p.where))]) {
+    const ids = [...new Set(o.older.filter((p) => p.where === where).map((p) => p.id))];
+    s.append(el('small', 'acct-warn ai-older', tr('ai.omp.older', { where, name: ids.map((id) => names.get(id) || '?').join(', ') })));
+  }
+  for (const a of o.list) {
+    const inUse = a.id === o.now, b = el('div', 'acct-block ai-acct'); b.dataset.id = a.id;
+    b.append(head('omp', a, inUse, a.plan ? a.plan[0].toUpperCase() + a.plan.slice(1) : '', async (u) => {
+      u.disabled = true;
+      await act('/api/ai/omp/use', { id: a.id }, (r) => tr(r.older?.some((p) => p.where !== 'terminal') ? 'ai.omp.usedReload' : 'ai.omp.used', { name: nameOf(a) }));
+    }));
+    for (const w of a.windows || []) bar(b, w.label || w.key, w.pct, w.resetsAt);
+    if (a.note === 'signedOut') b.append(el('small', 'acct-warn', tr('ai.omp.signedOut')));
+    else if (!a.windows?.length) b.append(el('small', 'plan-other-note', a.note === 'readFailed' ? tr('ai.unread') : a.at ? tr('ai.noLimits') : tr('ai.reading')));
+    s.append(b);
+  }
+  if (state.isLocal && o.cli) s.append(ompAdd(o.login));
+  if (o.list.length > 1 || o.auto) s.append(autoSwitch('omp', o.auto, tr(o.auto ? 'ai.omp.autoOn' : 'ai.omp.autoOff')));
+  return s;
+}
+let ompAdding = false;
+function ompAdd(L) {
+  if (L?.state === 'waiting') ompAdding = true;
+  if (!ompAdding || !L) return addButton('omp', tr('ai.omp.add'), async () => { ompAdding = true; renderAi(); const r = await act('/api/ai/omp/add', {}); if (!r.ok) { ompAdding = false; renderAi(); } });
+  const card = el('div', 'pa-step ai-step');
+  const close = () => { ompAdding = false; renderAi(); };
+  if (L.state === 'waiting') {
+    card.append(el('b', null, tr('ai.omp.add')));
+    const lead = el('div', 'pa-browser'); lead.append(icon('globe'), el('p', null, tr('ai.omp.browser')));
+    const links = el('div', 'pa-links'), open = btn(tr('mac.add.reopen'), 'btn--confirm', () => { if (L.url) window.open(L.url, '_blank', 'noopener'); });
+    open.disabled = !L.url; links.append(open);
+    if (L.url) links.append(btn(tr('mac.add.copyLink'), '', (e) => navigator.clipboard?.writeText(L.url).then(() => { e.target.textContent = tr('mac.add.copied'); }).catch(() => {})));
+    const wait = el('div', 'pa-wait'); wait.append(el('i', 'pa-spin'), el('span', null, tr('mac.add.waiting')));
+    const acts = el('div', 'pa-acts'); acts.append(btn(tr('mac.add.cancel'), '', async () => { await post('/api/ai/omp/cancel'); close(); }));
+    card.append(lead, links, el('p', 'pa-hint', tr('ai.omp.hint')), wait, acts);
+  } else if (L.state === 'done') {
+    const h = el('b', 'pa-done'); h.append(icon('check'), el('span', null, tr('ai.added', { name: L.name || 'Oh My Pi' })));
+    card.append(h, el('p', null, tr('ai.omp.addedText')));
+    const acts = el('div', 'pa-acts'); acts.append(btn(tr('mac.add.done'), 'btn--confirm', close)); card.append(acts);
+  } else {
+    card.append(el('b', null, tr('ai.omp.add')), el('p', 'pa-note', L.state === 'cancelled' ? tr('ai.cancelled') : tr('ai.omp.failed', { why: L.note || '' })));
+    const acts = el('div', 'pa-acts'); acts.append(btn(tr('mac.add.cancel'), '', close), btn(tr('mac.add.retry'), 'btn--confirm', () => act('/api/ai/omp/add', {}))); card.append(acts);
+  }
+  return card;
+}
+
+/* ---------- the tabs: Claude, Codex, Antigravity, Oh My Pi ----------
    As the phone window's two ways in: each tool's name, and under it the one thing worth knowing (the tightest limit of
    the account in use, out until when, a switch waiting), its dot coloured the way the limit bars are. Only the picked
    tool's accounts show; the pick is kept in this browser. Claude alone: no tabs, the card as it always was. */
@@ -237,6 +290,13 @@ function agLine(g) {
   const r = a.rows?.[0];
   return r ? [`${r.label.split(' ')[0]} ${r.pct}%`, level(r.pct)] : [tr('ai.tab.reading'), 'off'];
 }
+function ompLine(o) {
+  const a = o.list.find((x) => x.id === o.now);
+  if (!a) return [tr(o.seat === 'apiKey' ? 'ai.tab.apiKey' : 'ai.tab.signedOut'), 'off'];
+  if (a.until) return [outShort(a.until), 'critical'];
+  const top = tight(a.windows);
+  return top ? [`${top.label || top.key} ${Math.round(top.pct)}%`, level(top.pct)] : [a.model ? a.model.split('/').pop() : tr('ai.tab.reading'), 'off'];
+}
 function renderTabs(tools) {
   const bar = $('plan-tabs'), card = $('plan-card'); if (!bar || !card) return;
   const on = tools.length > 1, title = $('plan-title');
@@ -260,11 +320,11 @@ function renderTabs(tools) {
 /** The tabs and the section, drawn again on every change (not while a button in it is being pressed). */
 export function renderAi() {
   const box = $('plan-ai'); if (!box) return;
-  const ai = state.ai, showCodex = !!ai?.codex && (ai.codex.cli || ai.codex.list.length), showAg = !!ai?.ag && (ai.ag.note !== 'noDb' || ai.ag.list.length);
-  renderTabs([{ k: 'claude', name: 'Claude', line: claudeLine() }, showCodex && { k: 'codex', name: 'Codex', line: codexLine(ai.codex) }, showAg && { k: 'ag', name: 'Antigravity', line: agLine(ai.ag) }].filter(Boolean));
-  box.hidden = (!showCodex && !showAg) || tab === 'claude';
-  if (!showCodex && !showAg) { box.replaceChildren(); return; }
+  const ai = state.ai, showCodex = !!ai?.codex && (ai.codex.cli || ai.codex.list.length), showAg = !!ai?.ag && (ai.ag.note !== 'noDb' || ai.ag.list.length), showOmp = !!ai?.omp && (ai.omp.cli || ai.omp.list.length);
+  renderTabs([{ k: 'claude', name: 'Claude', line: claudeLine() }, showCodex && { k: 'codex', name: 'Codex', line: codexLine(ai.codex) }, showAg && { k: 'ag', name: 'Antigravity', line: agLine(ai.ag) }, showOmp && { k: 'omp', name: 'Oh My Pi', line: ompLine(ai.omp) }].filter(Boolean));
+  box.hidden = (!showCodex && !showAg && !showOmp) || tab === 'claude';
+  if (!showCodex && !showAg && !showOmp) { box.replaceChildren(); return; }
   if (box.contains(document.activeElement) && document.activeElement.matches(':active')) return;
-  box.replaceChildren(...[showCodex && tab === 'codex' && codexSection(ai.codex), showAg && tab === 'ag' && agSection(ai.ag)].filter(Boolean));
+  box.replaceChildren(...[showCodex && tab === 'codex' && codexSection(ai.codex), showAg && tab === 'ag' && agSection(ai.ag), showOmp && tab === 'omp' && ompSection(ai.omp)].filter(Boolean));
 }
 export function setAi(ai) { state.ai = ai || null; renderAi(); }

@@ -22,6 +22,7 @@ import { createVault } from './vault.mjs';
 import { MAIN, SUB, modelsOf, withModels, hasSplit, withSplit } from './models.mjs';
 import { createCodexAccounts } from './codex-accounts.mjs';
 import { createAntigravityAccounts, makeDb, windowsOf } from './antigravity-accounts.mjs';
+import { createOmpAccounts } from './omp-accounts.mjs';
 import { report as promptReport } from './prompt-report.mjs';
 import { testCounts, testRunner } from './testrun.mjs';
 import { scanUsage, blankUsage, ctxMax } from './usage.mjs';
@@ -215,21 +216,22 @@ async function classifyVi(name, input) {
 
 function classify(name = '', input = {}) {
   const i = input || {};
+  const f = i.file_path || i.path || i.file;
   switch (name) {
-    case 'Read': return { type: 'read', label: base(i.file_path), file: i.file_path };
-    case 'NotebookRead': return { type: 'read', label: base(i.notebook_path) };
-    case 'Grep': return { type: 'grep', label: clip(redact(oneLine(i.pattern)), 40) };
-    case 'Glob': return { type: 'glob', label: clip(oneLine(i.pattern), 40) };
-    case 'Edit': case 'MultiEdit': return { type: 'edit', label: base(i.file_path), file: i.file_path };
-    case 'NotebookEdit': return { type: 'edit', label: base(i.notebook_path) };
-    case 'Write': return { type: 'write', label: base(i.file_path), file: i.file_path };
-    case 'Bash': return { type: 'bash', label: bashLabel(i), tr: !!i.description };
-    case 'WebSearch': return { type: 'web', label: clip(redact(oneLine(i.query)), 48) };
-    case 'WebFetch': return { type: 'fetch', label: host(i.url) };
-    case 'Agent': case 'Task': return { type: 'agent', label: i.subagent_type || 'agent', desc: clip(redact(oneLine(i.description)), 50) };
-    case 'TodoWrite': case 'TaskCreate': case 'TaskUpdate': case 'TaskList': return { type: 'plan', label: tr('server.tool.todos') };
+    case 'Read': case 'read': return { type: 'read', label: base(f), file: f };
+    case 'NotebookRead': return { type: 'read', label: base(i.notebook_path || f) };
+    case 'Grep': case 'grep': return { type: 'grep', label: clip(redact(oneLine(i.pattern || i.query)), 40) };
+    case 'Glob': case 'glob': return { type: 'glob', label: clip(oneLine(i.pattern || i.glob), 40) };
+    case 'Edit': case 'MultiEdit': case 'edit': return { type: 'edit', label: base(f), file: f };
+    case 'NotebookEdit': return { type: 'edit', label: base(i.notebook_path || f) };
+    case 'Write': case 'write': return { type: 'write', label: base(f), file: f };
+    case 'Bash': case 'bash': return { type: 'bash', label: bashLabel(i), tr: !!i.description };
+    case 'WebSearch': case 'web_search': return { type: 'web', label: clip(redact(oneLine(i.query)), 48) };
+    case 'WebFetch': case 'web_fetch': case 'fetch': return { type: 'fetch', label: host(i.url) };
+    case 'Agent': case 'Task': case 'task': return { type: 'agent', label: i.subagent_type || i.type || 'agent', desc: clip(redact(oneLine(i.description || i.prompt)), 50) };
+    case 'TodoWrite': case 'TaskCreate': case 'TaskUpdate': case 'TaskList': case 'todo': return { type: 'plan', label: tr('server.tool.todos') };
     case 'EnterPlanMode': case 'ExitPlanMode': return { type: 'plan', label: tr('server.tool.plan') };
-    case 'AskUserQuestion': return { type: 'ask', label: tr('server.tool.ask') };
+    case 'AskUserQuestion': case 'ask': return { type: 'ask', label: tr('server.tool.ask') };
     case 'Skill': return { type: 'skill', label: clip(oneLine(i.skill || i.name || 'skill'), 32) };
     case 'ToolSearch': return { type: 'skill', label: tr('server.tool.search') };
     default:
@@ -237,7 +239,18 @@ function classify(name = '', input = {}) {
       return { type: 'other', label: name || tr('server.tool.other') };
   }
 }
-const COUNT_OF = { Read: 'read', NotebookRead: 'read', Grep: 'read', Glob: 'read', Edit: 'edit', MultiEdit: 'edit', Write: 'edit', NotebookEdit: 'edit', Bash: 'cmd', WebSearch: 'web', WebFetch: 'web' };
+const COUNT_OF = {
+  Read: 'read', read: 'read',
+  NotebookRead: 'read',
+  Grep: 'read', grep: 'read',
+  Glob: 'read', glob: 'read',
+  Edit: 'edit', MultiEdit: 'edit', edit: 'edit',
+  Write: 'edit', write: 'edit',
+  NotebookEdit: 'edit',
+  Bash: 'cmd', bash: 'cmd',
+  WebSearch: 'web', web_search: 'web',
+  WebFetch: 'web', web_fetch: 'web', fetch: 'web',
+};
 const DEPLOY_RE = /\bgit\s+push\b[^\n;|&]*?\b(v\d+\.\d+\.\d+)\b/;
 
 /* ---------- state ---------- */
@@ -1028,12 +1041,17 @@ async function onHook(p) {
   if (!s) {
     const key = 's' + sid;
     s = newSession(key);
-    s.sid = sid; s.cwd = p.cwd || ''; s.name = `${base(p.cwd) || 'claude'}-${sid.slice(0, 2)}`; noteDir(s.cwd);
+    const prefix = p.agent || p.entrypoint || 'claude';
+    s.name = p.name || `${prefix}-${base(p.cwd) || sid.slice(0, 2)}`;
+    if (p.agent || p.entrypoint) s.entry = p.agent || p.entrypoint;
+    s.sid = sid; s.cwd = p.cwd || ''; noteDir(s.cwd);
     sessions.set(key, s); sidToKey.set(sid, key);
     broadcast({ k: 'sess', s: pub(s) });
   }
   const now = Date.now();
   s.lastEventAt = now;
+  if (p.agent || p.entrypoint) s.entry = p.agent || p.entrypoint;
+  if (p.model && (!s.usage || !s.usage.model)) s.usage = { ...s.usage, model: p.model };
   { const day = new Date(now).toLocaleDateString('sv'); if (ev !== 'SessionEnd' && s.dayFirst?.day !== day) s.dayFirst = { day, at: now }; }   // (its first sign of life each day: the lobby's attendance terminal)
   if (p.transcript_path) s.transcript = p.transcript_path;
   if (ev !== 'SessionEnd') projectOf(s.cwd || p.cwd).then((name) => tenure.touch(name, { at: now, turn: ev === 'Stop', cwd: s.cwd || p.cwd })).catch(() => {});   // (its project's working life: server/tenure.mjs)
@@ -1074,7 +1092,7 @@ async function onHook(p) {
     }
     case 'PreToolUse': {
       const c = await classifyVi(p.tool_name, p.tool_input);
-      const runner = p.tool_name === 'Bash' && testRunner(p.tool_input?.command);   // a test run: the test board lights up for it
+      const runner = /^(Bash|bash)$/.test(p.tool_name || '') && testRunner(p.tool_input?.command);   // a test run: the test board lights up for it
       if (runner) Object.assign(c, { type: 'test', runner });
       if (!agent) { if (s.status === 'rest' && !s.taskStart) s.taskStart = now; s.status = 'work'; s.inTool = true; s.last = { type: c.type, label: c.label }; }
       else { const x = s.subs[agent]; if (x) { x.last = { type: c.type, label: c.label }; x.steps++; lookModel(s, x, now); } }   // (it may have stopped while the call was being read)
@@ -1088,21 +1106,21 @@ async function onHook(p) {
       if (!agent) { s.inTool = false; trackTodos(s, p); trackBackground(s, p); }
       count(s, p.tool_name, agent);
       if (EDIT_TOOLS.has(p.tool_name)) overlap.edited(sid, fileOf(p.tool_input, p.cwd || s.cwd));   // (another session about to edit it is told: /hook/loop)
-      if (p.tool_name === 'Bash') { const r = p.tool_response; portClash(s, sid, portInUse(typeof r === 'string' ? r : r && typeof r === 'object' ? `${r.stdout || ''}\n${r.stderr || ''}` : '')); }
+      if (/^(Bash|bash)$/.test(p.tool_name || '')) { const r = p.tool_response; portClash(s, sid, portInUse(typeof r === 'string' ? r : r && typeof r === 'object' ? `${r.stdout || ''}\n${r.stderr || ''}` : '')); }
       if (s.status === 'wait') s.status = 'work';
-      if (p.tool_name === 'Bash' && /\bgit\b/.test(String(p.tool_input?.command || ''))) setTimeout(pollGit, 1200);   // a commit or push shows up at once
-      const m = p.tool_name === 'Bash' && DEPLOY_RE.exec(String(p.tool_input?.command || ''));
+      if (/^(Bash|bash)$/.test(p.tool_name || '') && /\bgit\b/.test(String(p.tool_input?.command || ''))) setTimeout(pollGit, 1200);   // a commit or push shows up at once
+      const m = /^(Bash|bash)$/.test(p.tool_name || '') && DEPLOY_RE.exec(String(p.tool_input?.command || ''));
       if (m) { stats.deploy++; dirty = true; trophies.bump('deploy'); e = mk('deploy', m[1]); }
-      const runner = !e && p.tool_name === 'Bash' && testRunner(p.tool_input?.command);
+      const runner = !e && /^(Bash|bash)$/.test(p.tool_name || '') && testRunner(p.tool_input?.command);
       // (with how many passed: the pickleball court's point, src/office/world/backdrops/street-pickle.js)
       if (runner) { const r = p.tool_response, n = testCounts(typeof r === 'string' ? r : r && typeof r === 'object' ? `${r.stdout || ''}\n${r.stderr || ''}` : ''); e = mk('testok', runner, { agent, quiet: !!agent, ...(n || {}) }); if (agent) toFeed = false; }
       break;
     }
     case 'PostToolUseFailure': {
       if (!agent) s.inTool = false;
-      if (p.tool_name === 'Bash') portClash(s, sid, portInUse(p.error));
+      if (/^(Bash|bash)$/.test(p.tool_name || '')) portClash(s, sid, portInUse(p.error));
       if (s.status === 'wait') s.status = 'work';
-      const c = await classifyVi(p.tool_name, p.tool_input), runner = p.tool_name === 'Bash' && testRunner(p.tool_input?.command);
+      const c = await classifyVi(p.tool_name, p.tool_input), runner = /^(Bash|bash)$/.test(p.tool_name || '') && testRunner(p.tool_input?.command);
       // (a failing test run is the test board's red lamp, not a failure that counts towards an incident)
       e = runner ? mk('testfail', runner, { agent, quiet: !!agent, ...(testCounts(p.error) || {}) }) : mk('fail', c.label || p.tool_name || '', { agent, quiet: !!agent });
       if (agent) toFeed = false;
@@ -2459,8 +2477,39 @@ const ag = AI_OFF ? null : createAntigravityAccounts({
     } else if (what?.waiting) chat.system(tr('chat.ai.agWaiting', { from: name(what.waiting.from), to: name(what.waiting.to), app: AG_APP }));
   },
 });
+// Oh My Pi (omp.sh): its CLI and configuration/credentials in ~/.omp/agent
+let ompBin = null;
+function findOmp() {
+  if (ompBin && fs.existsSync(ompBin)) return ompBin;
+  const exe = process.platform === 'win32' ? 'omp.exe' : 'omp', isFile = (f) => { try { return fs.statSync(f).isFile(); } catch { return false; } };
+  if (process.env.OFFICE_OMP_BIN) return (ompBin = isFile(process.env.OFFICE_OMP_BIN) ? process.env.OFFICE_OMP_BIN : null);
+  for (const d of String(process.env.PATH || '').split(path.delimiter)) {
+    if (d && isFile(path.join(d, exe))) return (ompBin = path.join(d, exe));
+    if (d && process.platform !== 'win32' && isFile(path.join(d, 'omp.sh'))) return (ompBin = path.join(d, 'omp.sh'));
+  }
+  const fallbacks = [
+    path.join(os.homedir(), '.omp', 'bin', exe),
+    '/opt/homebrew/bin/omp',
+    '/usr/local/bin/omp',
+  ];
+  for (const f of fallbacks) if (isFile(f)) return (ompBin = f);
+  return null;
+}
+const ompPs = async () => (process.env.OFFICE_OMP_PROCS === '0' ? [] : (await procArgs()).filter((p) => /omp(\.exe|\.sh|\b)/i.test(p.args)));
+const omp = AI_OFF ? null : createOmpAccounts({
+  dir: path.join(DATA_DIR, 'omp'),
+  seat: () => path.resolve(String(process.env.PI_CODING_AGENT_DIR || process.env.OMP_HOME || path.join(os.homedir(), '.omp', 'agent')).replace(/^~(?=$|[\\/])/, os.homedir())),
+  bin: findOmp, procs: ompPs, openUrl, log: (s) => console.log(s),
+  onChange: (what) => {
+    aiSoon();
+    const sw = what?.switched; if (!sw) return;
+    const o = omp.out(), name = (id) => aiName(o.list.find((a) => a.id === id)), older = o.older.filter((p) => p.where !== 'terminal').map((p) => p.where);
+    chat.system(tr(sw.why === 'auto' ? 'chat.ai.ompAuto' : 'chat.ai.ompUsed', { from: name(sw.from), to: name(sw.to), when: sw.until ? hhmmOf(sw.until) : '' })
+      + (older.length ? ` ${tr('chat.ai.ompReload', { where: [...new Set(older)].join(', ') })}` : ''));
+  },
+});
 const hhmmOf = (t) => new Date(t).toLocaleTimeString(prefs.lang() === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-function aiOut() { return AI_OFF ? null : { codex: codex.out(), ag: ag.out() }; }
+function aiOut() { return AI_OFF ? null : { codex: codex.out(), ag: ag.out(), omp: omp?.out?.() || null }; }
 /* ---------- the Mac's menu bar (menubar/MyOfficeBar.swift, built by `my-office install`) ----------
    What its icon shows, read every 3 seconds: how many sessions wait for you and how many are at work, the tightest limit
    of each tool's account in use as a level, and each session's state (a notification when one starts waiting or
@@ -2470,8 +2519,8 @@ function panelOut() {
   const now = Date.now(), waitingFor = new Set([...pending.values()].map((p) => p.sess));
   const list = [...sessions.values()].map((s) => ({ id: s.id, name: s.title || s.name, status: s.status === 'wait' || waitingFor.has(s.id) ? 'wait' : s.status === 'work' ? 'work' : 'rest' }));
   const tight = (ws) => Math.max(0, ...(ws || []).filter((w) => !w.resetsAt || w.resetsAt > now).map((w) => w.pct || 0));
-  const ai = aiOut(), cx = ai?.codex?.list?.find((a) => a.id === ai.codex.now), ag2 = ai?.ag?.list?.find((a) => a.id === ai.ag.now);
-  const top = Math.max(tight(limitsOut()?.windows), tight(cx?.windows), ag2?.rows?.[0]?.pct || 0);
+  const ai = aiOut(), cx = ai?.codex?.list?.find((a) => a.id === ai.codex.now), ag2 = ai?.ag?.list?.find((a) => a.id === ai.ag.now), oa = ai?.omp?.list?.find((a) => a.id === ai.omp.now);
+  const top = Math.max(tight(limitsOut()?.windows), tight(cx?.windows), ag2?.rows?.[0]?.pct || 0, tight(oa?.windows));
   const working = list.filter((s) => s.status === 'work').length, waiting = list.filter((s) => s.status === 'wait').length;
   // the requests held now, for the notification banners (a risky command gets no "allow" there: the office asks twice)
   const held = [...pending.values()].map((p) => ({ id: p.id, kind: p.kind || 'perm', sess: p.sess, name: p.name, tool: p.tool, detail: clip(oneLine(p.kind === 'plan' ? p.detail : p.kind === 'ask' ? p.questions?.[0]?.question || '' : `${p.label}: ${p.detail}`), 120), risky: (p.kind || 'perm') === 'perm' && !!dangerKey(p), until: p.until }));
@@ -2483,7 +2532,7 @@ const MENUBAR_APP = path.join(DATA_DIR, 'menubar', 'My Office.app');
 if (process.platform === 'darwin' && process.env.OFFICE_MENUBAR !== '0' && fs.existsSync(MENUBAR_APP)) {
   execFile('pgrep', ['-f', 'My Office.app/Contents/MacOS/MyOfficeBar'], (err) => { if (err) execFile('open', ['-g', MENUBAR_APP, '--args', String(PORT)], () => {}); });
 }
-codex?.start(); ag?.start();
+codex?.start(); ag?.start(); omp?.start();
 
 /* ---------- bring a session's own window to the front ----------
    Walk up from the session's claude process to the app that hosts it (the IDE, Terminal, iTerm…) and `open -a` it,
@@ -2968,7 +3017,7 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  if (req.method === 'POST' && /^\/api\/ai\/(codex|ag)\/(use|add|cancel|remove|rename|auto|order|later|read)$/.test(url.pathname)) {   // (this computer only, from this page)
+  if (req.method === 'POST' && /^\/api\/ai\/(codex|ag|omp)\/(use|add|cancel|remove|rename|auto|order|later|read)$/.test(url.pathname)) {   // (this computer only, from this page)
     if (AI_OFF || !isLoopback(req) || !sameOriginOf(req) || !String(req.headers['content-type'] || '').startsWith('application/json')) { json(res, 403, { ok: false, message: tr('server.account.onMac') }); return; }
     readJson(req).then(async (b) => {
       const [, tool, op] = /^\/api\/ai\/(\w+)\/(\w+)$/.exec(url.pathname), id = String(b?.id || '').slice(0, 40), label = clip(oneLine(b?.label), 24);
@@ -2982,6 +3031,15 @@ const server = http.createServer((req, res) => {
         else if (op === 'auto') r = codex.setAuto(!!b?.on);
         else if (op === 'order') r = codex.setOrder(b?.order);
         else if (op === 'read') { await codex.read(id); r = { ok: true }; }
+      } else if (tool === 'omp') {
+        if (op === 'use') r = await omp.switchTo(id);
+        else if (op === 'add') { const L = omp.addStart(); r = { ok: L?.state === 'waiting' || L?.state === 'done', ...L, ...(L?.state === 'failed' && { code: L.note === 'noCli' ? 'noCli' : 'loginFailed' }) }; }
+        else if (op === 'cancel') { omp.addCancel(); r = { ok: true }; }
+        else if (op === 'remove') r = await omp.remove(id);
+        else if (op === 'rename') r = omp.rename(id, label);
+        else if (op === 'auto') r = omp.setAuto(!!b?.on);
+        else if (op === 'order') r = omp.setOrder(b?.order);
+        else if (op === 'read') { await omp.read(id); r = { ok: true }; }
       } else {
         if (op === 'use') r = await ag.switchTo(id, { restart: !!b?.restart });
         else if (op === 'add') r = await ag.add({ restart: !!b?.restart });

@@ -3,11 +3,11 @@
 // told first; and a word kept for a session until its next tool call (the synchronous hook carries it). Memory only.
 import path from 'node:path';
 
-export const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+export const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'edit', 'write']);
 export const WINDOW = 20 * 60e3;
 /** The file a call edits: an absolute path, or '' (relative paths are taken from the session's folder). */
 export function fileOf(input, cwd = '') {
-  const f = String(input?.file_path || input?.notebook_path || '');
+  const f = String(input?.file_path || input?.notebook_path || input?.path || input?.file || '');
   return !f ? '' : path.isAbsolute(f) ? path.normalize(f) : cwd ? path.resolve(cwd, f) : '';
 }
 /** The port a command says it couldn't have, from what it printed: Node's EADDRINUSE, "address already in use", a dev

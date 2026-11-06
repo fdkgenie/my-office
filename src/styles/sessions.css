@@ -39,10 +39,12 @@
 .av-txt { font: 700 .72rem/1 var(--font); color: #F3F5FA; letter-spacing: -.01em; display: grid; place-items: center; }
 .av-logo { width: 19px; height: 19px; display: block; }
 .av-logo[data-agent="gemini"] { width: 18px; height: 18px; }
+.av-logo[data-agent="omp"] { width: 18px; height: 18px; }
 /* the agent's mark on its own tile colour, the session's colour as the ring */
 .av:has(.av-logo[data-agent="claude"]) { background: #F4EEE3; }
 .av:has(.av-logo[data-agent="gemini"]) { background: #FFFFFF; }
 .av:has(.av-logo[data-agent="codex"]) { background: #0F1013; }
+.av:has(.av-logo[data-agent="omp"]) { background: #1E1E2E; }
 .av:has(.av-logo) { box-shadow: inset 0 0 0 2.5px var(--c), inset 0 0 0 4px rgba(0, 0, 0, .25); }
 .av-st { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 2.5px var(--side); }
 .ri[data-status="work"] .av-st { background: var(--green); }

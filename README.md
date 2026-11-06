@@ -414,7 +414,7 @@ node bin/cli.mjs install --service   # the same commands as `my-office …`, its
   VS Code, Cursor, Windsurf…: its icon in the activity bar): who is working, who waits for you with "Allow / Deny" right
   there, each tool's limit left; click a session to bring its window forward. It is the office's light page `/panel`
   (no 3D), so it costs next to nothing; `--no-panel` leaves the editors alone, `uninstall` takes it out.
-- **Codex and Antigravity accounts too**: the plan card has a tab for each beside Claude's (as the phone window's two ways
+- **Codex, Antigravity, and Oh My Pi accounts too**: the plan card has a tab for each beside Claude's (as the phone window's two ways
   in), each with the account in use's tightest limit and a dot coloured like the bars; only the picked tool's accounts show. **Codex**: the account
   Codex is signed in with shows by itself, with its 5-hour and weekly usage (read by Codex's own `codex app-server`);
   "Add a Codex account" opens the ChatGPT sign-in page without signing the current one out; "Use" puts that account's
@@ -426,10 +426,13 @@ node bin/cli.mjs install --service   # the same commands as `my-office …`, its
   or the mouse, or a locked screen) with no Claude session in it at work and its own agent idle, the office closes and
   reopens it behind the app you had in front, every window, tab, unsaved file and Claude conversation back as it was
   (on a Mac; `OFFICE_AG_AWAY_MIN` sets the minutes). You can also have it done now. Adding one takes the IDE's sign-in
-  out (kept, not signed out) and opens it to sign in again. With "Switch by itself when one runs out" on, both move to
-  the next account with room; Antigravity already at 90% used, so the switch is done before you run out. The sign-ins
-  stay in the office's own data folder (`data/codex`, `data/antigravity`, readable by you only). `OFFICE_AI_ACCOUNTS=0`
-  turns both off.
+  out (kept, not signed out) and opens it to sign in again.
+  **Oh My Pi (omp.sh)**: each account / profile with its active model role (default and advisor) and rate limits, read
+  from `~/.omp/agent/config.yml` and credentials; "Add an Oh My Pi profile / account" lets you add another configuration;
+  "Use" swaps the active seat configuration (`~/.omp/agent`). An omp session opened after that uses it.
+  With "Switch by itself when one runs out" on, they move to the next account with room; Antigravity already at 90% used,
+  so the switch is done before you run out. The sign-ins stay in the office's own data folder (`data/codex`, `data/antigravity`,
+  `data/omp`, readable by you only). `OFFICE_AI_ACCOUNTS=0` turns them off.
 - **The Mac pill** opens RAM, swap, CPU and disk. It says why the Mac is slow (memory spilled to disk, who holds the
   most) with one button to close every idle Claude session, and suggests the rest: stop a forgotten dev server, quit a
   heavy app, clear caches. Idle sessions can also be closed on a timer (off by default). Every action is checked first

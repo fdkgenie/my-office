@@ -39,11 +39,11 @@ export const colorOf = (s) => (s.desk >= 0 ? PALETTE[s.desk] : PALETTE[hash(s.na
 // The short name stays the identity: looks, colours and the timeline are keyed by it.
 export const dn = (s) => (s ? s.title || s.name : '');
 export const dnOf = (e) => dn(sessions.get(e.sess)) || e.name || tr('common.session');
-// Which agent a session runs, shown as its logo in the list (Claude Code today; Codex and Gemini when the server
-// reports them). The marks are the brands' own logos as published by Simple Icons (CC0 path data, v15.17.0); the
-// trademarks belong to Anthropic, Google and OpenAI.
-export const agentOf = (s) => (s?.agent === 'codex' || s?.agent === 'gemini' ? s.agent : 'claude');
-export const AGENT_NAME = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini' };
+// Which agent a session runs, shown as its logo in the list (Claude Code today; Codex, Gemini and Oh My Pi when the
+// server reports them). The marks are the brands' own logos as published by Simple Icons (CC0 path data, v15.17.0); the
+// trademarks belong to Anthropic, Google, OpenAI and Oh My Pi.
+export const agentOf = (s) => (s?.agent === 'codex' || s?.agent === 'gemini' || s?.agent === 'omp' ? s.agent : 'claude');
+export const AGENT_NAME = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', omp: 'Oh My Pi' };
 let AGENT_SVG;
 export function agentMark(kind) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -171,6 +171,7 @@ export function setup() {
     claude: `<path fill="#D97757" d="${CLAUDE_MARK}"/>`,
     gemini: '<defs><linearGradient id="gm-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4285F4"/><stop offset=".55" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs><path fill="url(#gm-g)" d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/>',
     codex: '<path fill="#FFFFFF" d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>',
+    omp: '<path fill="#FF5722" d="M4 6.5h16v2.5H16.5v8.5c0 1.5.5 2.5 2 2.5.8 0 1.5-.3 2-.7v2.3c-.7.5-1.7.9-2.8.9-2.6 0-3.7-1.5-3.7-4.2V9H10v9.5c0 1.2-.3 2.1-.9 2.7-.6.6-1.5.8-2.6.8-1 0-1.9-.3-2.5-.7v-2.3c.5.3 1.2.5 1.8.5.8 0 1.2-.4 1.2-1.3V9H4V6.5z"/>',
   };
   /* floating "z" for napping chibis */
   zTex = canvasTex(64, 64, (g) => { g.font = '900 46px "Baloo 2", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = '#1F2A12'; g.strokeText('z', 32, 34); g.fillStyle = '#FFFFFF'; g.fillText('z', 32, 34); });

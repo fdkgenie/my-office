@@ -18,7 +18,7 @@ export default async function TopBar() {
           <div className="pop pop-plan" id="pop-plan" hidden role="dialog" aria-label={t('ui.topBar.planLimits')}>
             <div className="plan-card" id="plan-card">
               <span className="hl-head"><b id="plan-title">{t('ui.topBar.planLimits')}</b><span className="pl-at" id="plan-at"></span></span>
-              {/* Claude, Codex, Antigravity as tabs when there is more than Claude (src/office/ui/ai-accounts.js) */}
+              {/* Claude, Codex, Antigravity, Oh My Pi as tabs when there is more than Claude (src/office/ui/ai-accounts.js) */}
               <div className="pm-tabs plan-tabs" id="plan-tabs" role="tablist" hidden></div>
               <div className="plan-pane" id="plan-pane-claude" role="tabpanel">
                 <span className="plan-acct" id="plan-acct" hidden></span>

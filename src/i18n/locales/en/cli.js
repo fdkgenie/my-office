@@ -21,8 +21,10 @@ export default {
     next: 'Open http://localhost:{port}, then type something in Claude Code to see a character walk in.',
     otel: 'Claude Code now sends its own usage numbers to the office (this computer only, prompts stay hidden): see what eats your plan from a new session on. Added to {file}',
     otelTheirs: 'You already send Claude Code\'s telemetry somewhere ({where}), so it was left alone. To see "What eats your plan" as well, add the office as a second exporter in your OpenTelemetry Collector:',
+    omp: 'Oh My Pi extension: {file}',
   },
   uninstall: {
+    omp: 'Took the Oh My Pi extension out.',
     menubar: 'Took the menu bar icon out.',
     panel: 'Took the My Office panel out of {app}.',
     editors: "Took the office's account switch out of the editors' settings",
